@@ -4,7 +4,7 @@
 
 Rektify is the first AI-powered crypto trading therapist. It doesn’t just roast your worst trades — it helps you recover, track progress, and earn rewards for not aping like a lunatic.
 
-![Rektify Banner](./.github/banner.png)
+[Rektify Banner](path/to/banner.png)
 
 ---
 
