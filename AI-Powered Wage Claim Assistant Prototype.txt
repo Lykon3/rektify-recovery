@@ -1,0 +1,385 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>AI Wage Claim Assistant</title>
+   <!-- Tailwind CSS CDN -->
+   <script src="https://cdn.tailwindcss.com"></script>
+   <style>
+       @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+       body {
+           font-family: 'Inter', sans-serif;
+           background-color: #f0f4f8; /* Light blue-gray background */
+           display: flex;
+           justify-content: center;
+           align-items: flex-start; /* Align to top for better scrolling */
+           min-height: 100vh;
+           padding: 2rem 1rem; /* Add padding for mobile view */
+           box-sizing: border-box;
+       }
+       .container {
+           background-color: #ffffff;
+           border-radius: 1.5rem; /* More rounded corners */
+           box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+           overflow: hidden;
+           display: flex;
+           flex-direction: column;
+           width: 100%;
+           max-width: 600px; /* Max width for desktop */
+           min-height: 70vh; /* Ensure enough height */
+           position: relative; /* For loading overlay */
+       }
+       .chat-area {
+           flex-grow: 1;
+           padding: 1.5rem;
+           overflow-y: auto;
+           display: flex;
+           flex-direction: column;
+           gap: 1rem;
+           background-color: #e2e8f0; /* Light gray for chat background */
+       }
+       .message {
+           max-width: 80%;
+           padding: 0.75rem 1rem;
+           border-radius: 1rem; /* Rounded message bubbles */
+           word-wrap: break-word;
+       }
+       .user-message {
+           align-self: flex-end;
+           background-color: #3b82f6; /* Blue for user messages */
+           color: white;
+           border-bottom-right-radius: 0.25rem; /* Sharper corner on one side */
+       }
+       .ai-message {
+           align-self: flex-start;
+           background-color: #f3f4f6; /* Light gray for AI messages */
+           color: #1f2937;
+           border-bottom-left-radius: 0.25rem; /* Sharper corner on one side */
+       }
+       .input-area {
+           display: flex;
+           padding: 1rem;
+           border-top: 1px solid #cbd5e1;
+           background-color: #ffffff;
+       }
+       .input-area textarea {
+           flex-grow: 1;
+           border: 1px solid #d1d5db;
+           border-radius: 0.75rem;
+           padding: 0.75rem 1rem;
+           resize: none; /* Disable manual resize */
+           font-size: 1rem;
+           line-height: 1.5;
+           outline: none;
+           transition: border-color 0.2s ease-in-out;
+           height: 48px; /* Fixed height for single line initially */
+           overflow-y: hidden; /* Hide scrollbar until needed */
+       }
+       .input-area textarea:focus {
+           border-color: #3b82f6;
+           box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+       }
+       .input-area button {
+           background-color: #3b82f6;
+           color: white;
+           padding: 0.75rem 1.25rem;
+           border-radius: 0.75rem;
+           margin-left: 0.75rem;
+           font-weight: 600;
+           cursor: pointer;
+           transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+       }
+       .input-area button:hover {
+           background-color: #2563eb;
+           transform: translateY(-1px);
+       }
+       .input-area button:disabled {
+           background-color: #93c5fd;
+           cursor: not-allowed;
+       }
+       .loading-overlay {
+           position: absolute;
+           top: 0;
+           left: 0;
+           right: 0;
+           bottom: 0;
+           background-color: rgba(255, 255, 255, 0.8);
+           display: flex;
+           justify-content: center;
+           align-items: center;
+           z-index: 10;
+           border-radius: 1.5rem;
+           backdrop-filter: blur(5px);
+           opacity: 0;
+           visibility: hidden;
+           transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
+       }
+       .loading-overlay.active {
+           opacity: 1;
+           visibility: visible;
+       }
+       .spinner {
+           border: 4px solid rgba(0, 0, 0, 0.1);
+           border-left-color: #3b82f6;
+           border-radius: 50%;
+           width: 40px;
+           height: 40px;
+           animation: spin 1s linear infinite;
+       }
+       @keyframes spin {
+           0% { transform: rotate(0deg); }
+           100% { transform: rotate(360deg); }
+       }
+
+       /* Responsive adjustments for smaller screens */
+       @media (max-width: 640px) {
+           body {
+               padding: 1rem;
+           }
+           .container {
+               min-height: 90vh; /* Take more height on small screens */
+               border-radius: 1rem;
+           }
+           .chat-area {
+               padding: 1rem;
+           }
+           .message {
+               max-width: 90%;
+               font-size: 0.9rem;
+           }
+           .input-area {
+               padding: 0.75rem;
+           }
+           .input-area textarea {
+               font-size: 0.9rem;
+               border-radius: 0.5rem;
+           }
+           .input-area button {
+               padding: 0.6rem 1rem;
+               border-radius: 0.5rem;
+               margin-left: 0.5rem;
+           }
+       }
+   </style>
+</head>
+<body>
+   <div class="container">
+       <div class="p-4 bg-gradient-to-r from-blue-600 to-indigo-700 text-white text-center rounded-t-xl shadow-md">
+           <h1 class="text-2xl font-bold">AI Wage Claim Assistant</h1>
+           <p class="text-sm opacity-90 mt-1">Describe your situation, and let AI help structure your claim info.</p>
+       </div>
+
+       <div id="chatArea" class="chat-area">
+           <div class="ai-message message">
+               Hello! I'm your AI Wage Claim Assistant. Please describe your wage theft situation in as much detail as possible. For example: "My employer didn't pay me overtime for 20 hours in the last two weeks of May. My hourly rate is $15."
+           </div>
+       </div>
+
+       <div class="input-area">
+           <textarea id="userInput" placeholder="Tell me about your wage theft issue..." rows="1"></textarea>
+           <button id="sendButton">Send</button>
+       </div>
+
+       <div id="loadingOverlay" class="loading-overlay">
+           <div class="spinner"></div>
+       </div>
+   </div>
+
+   <script type="module">
+       // Global variables for Firebase
+       const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+       const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+       const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+       // Firebase imports and initialization (not strictly needed for this version since no persistence, but good practice)
+       import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+       import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+       // Firestore imports are commented out as they are not used for this basic prototype.
+       // import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+       // Initialize Firebase if config is available
+       let app;
+       let auth;
+       // let db; // No Firestore usage in this specific prototype
+
+       if (Object.keys(firebaseConfig).length > 0) {
+           app = initializeApp(firebaseConfig);
+           auth = getAuth(app);
+           // db = getFirestore(app); // No Firestore usage in this specific prototype
+
+           // Sign in anonymously or with custom token
+           async function authenticateFirebase() {
+               try {
+                   if (initialAuthToken) {
+                       await signInWithCustomToken(auth, initialAuthToken);
+                       console.log("Signed in with custom token.");
+                   } else {
+                       await signInAnonymously(auth);
+                       console.log("Signed in anonymously.");
+                   }
+               } catch (error) {
+                   console.error("Firebase authentication error:", error);
+                   // Optionally display a user-friendly message about authentication issues
+               }
+           }
+           authenticateFirebase();
+       } else {
+           console.warn("Firebase configuration not found. Running without Firebase services.");
+       }
+
+
+       const chatArea = document.getElementById('chatArea');
+       const userInput = document.getElementById('userInput');
+       const sendButton = document.getElementById('sendButton');
+       const loadingOverlay = document.getElementById('loadingOverlay');
+
+       let chatHistory = [{ role: "user", parts: [{ text: "Please act as an AI Wage Claim Assistant. Your goal is to extract key details for a wage theft claim from the user's description. When I provide my situation, analyze it and output a structured JSON object containing 'claimType', 'datesInvolved', 'amountsOwed', 'employerName', 'employeeName', 'hourlyRate', 'hoursUnpaid', 'description', and 'potentialNextSteps'. If a field is not applicable or cannot be determined, use 'N/A'. Keep 'description' as a summary of the user's input. For 'potentialNextSteps', suggest general actions like 'Gather all pay stubs and employment contracts', 'Contact your state's Department of Labor', 'Consult with a legal aid organization'. Confirm that you understand this role." }] }];
+
+       // Simulate initial AI response for the role confirmation
+       appendMessage('AI', "Understood. I'm ready to help you structure your wage theft claim details. Please tell me about your situation.");
+
+
+       // Auto-resize textarea
+       userInput.addEventListener('input', () => {
+           userInput.style.height = 'auto';
+           userInput.style.height = userInput.scrollHeight + 'px';
+       });
+
+       sendButton.addEventListener('click', sendMessage);
+       userInput.addEventListener('keypress', (event) => {
+           if (event.key === 'Enter' && !event.shiftKey) {
+               event.preventDefault(); // Prevent new line
+               sendMessage();
+           }
+       });
+
+       async function sendMessage() {
+           const userText = userInput.value.trim();
+           if (!userText) return;
+
+           appendMessage('user', userText);
+           userInput.value = ''; // Clear input immediately
+           userInput.style.height = '48px'; // Reset textarea height
+           sendButton.disabled = true;
+           loadingOverlay.classList.add('active'); // Show loading overlay
+
+           chatHistory.push({ role: "user", parts: [{ text: userText }] });
+
+           try {
+               const payload = {
+                   contents: chatHistory,
+                   generationConfig: {
+                       responseMimeType: "application/json",
+                       responseSchema: {
+                           type: "OBJECT",
+                           properties: {
+                               "claimType": { "type": "STRING", "description": "Type of wage claim (e.g., Unpaid Overtime, Unpaid Wages, Minimum Wage Violation, Final Paycheck)" },
+                               "datesInvolved": { "type": "STRING", "description": "Specific dates or date ranges when the issue occurred (e.g., 'May 1-15, 2024', 'Last 3 months')" },
+                               "amountsOwed": { "type": "STRING", "description": "Estimated total amount of wages or damages owed, if mentioned (e.g., '$500', 'approximately $1,200')" },
+                               "employerName": { "type": "STRING", "description": "Name of the employer, if mentioned" },
+                               "employeeName": { "type": "STRING", "description": "Name of the employee, if mentioned" },
+                               "hourlyRate": { "type": "STRING", "description": "Employee's hourly rate, if mentioned (e.g., '$15/hour')" },
+                               "hoursUnpaid": { "type": "STRING", "description": "Number of hours or days for which wages were unpaid, if mentioned (e.g., '20 hours overtime', '5 days')" },
+                               "description": { "type": "STRING", "description": "A summary of the user's wage theft situation" },
+                               "potentialNextSteps": {
+                                   "type": "ARRAY",
+                                   "items": { "type": "STRING" },
+                                   "description": "General next steps for the user to take"
+                               }
+                           },
+                           "required": ["claimType", "datesInvolved", "amountsOwed", "description", "potentialNextSteps"],
+                           "propertyOrdering": ["claimType", "datesInvolved", "amountsOwed", "employerName", "employeeName", "hourlyRate", "hoursUnpaid", "description", "potentialNextSteps"]
+                       }
+                   }
+               };
+
+               const apiKey = ""; // Canvas will provide this at runtime
+               const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+               const response = await fetch(apiUrl, {
+                   method: 'POST',
+                   headers: { 'Content-Type': 'application/json' },
+                   body: JSON.stringify(payload)
+               });
+
+               if (!response.ok) {
+                   const errorBody = await response.json();
+                   throw new Error(`API error: ${response.status} ${response.statusText} - ${errorBody.error.message}`);
+               }
+
+               const result = await response.json();
+               console.log("Gemini API response:", result); // Log the full response
+
+               if (result.candidates && result.candidates.length > 0 &&
+                   result.candidates[0].content && result.candidates[0].content.parts &&
+                   result.candidates[0].content.parts.length > 0) {
+                   const jsonString = result.candidates[0].content.parts[0].text;
+                   let parsedJson;
+                   try {
+                       parsedJson = JSON.parse(jsonString);
+                   } catch (parseError) {
+                       console.error("Failed to parse JSON from AI response:", parseError, "Raw AI response:", jsonString);
+                       appendMessage('AI', 'I had trouble understanding that. Could you please rephrase or give more details?');
+                       return; // Exit function if parsing fails
+                   }
+
+                   // Format the AI response for display
+                   let aiResponseHtml = `<p class="font-semibold text-lg mb-2">Here's a summary of your potential claim:</p>`;
+                   aiResponseHtml += `<ul class="list-disc pl-5 space-y-1">`;
+                   for (const key in parsedJson) {
+                       if (parsedJson.hasOwnProperty(key)) {
+                           let value = parsedJson[key];
+                           // Capitalize the key for better readability
+                           const formattedKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+
+                           if (Array.isArray(value)) {
+                               if (value.length > 0) {
+                                   aiResponseHtml += `<li><strong>${formattedKey}:</strong>`;
+                                   aiResponseHtml += `<ul class="list-disc pl-5 mt-1 text-sm text-gray-700">`;
+                                   value.forEach(item => {
+                                       aiResponseHtml += `<li>${item}</li>`;
+                                   });
+                                   aiResponseHtml += `</ul></li>`;
+                               } else {
+                                    aiResponseHtml += `<li><strong>${formattedKey}:</strong> N/A</li>`;
+                               }
+                           } else {
+                               aiResponseHtml += `<li><strong>${formattedKey}:</strong> ${value || 'N/A'}</li>`;
+                           }
+                       }
+                   }
+                   aiResponseHtml += `</ul>`;
+
+                   appendMessage('AI', aiResponseHtml);
+
+               } else {
+                   console.error("Unexpected AI response structure:", result);
+                   appendMessage('AI', "I'm sorry, I couldn't process that. Please try again or rephrase your request.");
+               }
+           } catch (error) {
+               console.error("Error communicating with Gemini API:", error);
+               appendMessage('AI', `An error occurred: ${error.message}. Please try again later.`);
+           } finally {
+               loadingOverlay.classList.remove('active'); // Hide loading overlay
+               sendButton.disabled = false;
+               chatArea.scrollTop = chatArea.scrollHeight; // Scroll to bottom
+           }
+       }
+
+       function appendMessage(sender, text) {
+           const messageElement = document.createElement('div');
+           messageElement.classList.add('message');
+           if (sender === 'user') {
+               messageElement.classList.add('user-message');
+           } else {
+               messageElement.classList.add('ai-message');
+               messageElement.classList.add('prose'); // Add prose class for markdown styling
+           }
+           messageElement.innerHTML = text; // Use innerHTML to render formatted text
+           chatArea.appendChild(messageElement);
+           chatArea.scrollTop = chatArea.scrollHeight; // Scroll to bottom
+       }
+   </script>
+</body>
+</html>

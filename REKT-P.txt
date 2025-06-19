@@ -1,0 +1,321 @@
+﻿// api/generate-diagnosis.js
+import { Configuration, OpenAIApi } from 'openai';
+import { createClient } from '@supabase/supabase-js';
+
+
+const openai = new OpenAIApi(new Configuration({
+  apiKey: process.env.OPENAI_API_KEY,
+}));
+
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY
+);
+
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') return res.status(405).end();
+
+
+  const { tradeDescription, walletAddress } = req.body;
+
+
+  try {
+    // Generate diagnosis with GPT-4
+    const diagnosis = await openai.createChatCompletion({
+      model: 'gpt-4',
+      messages: [
+        {
+          role: 'system',
+          content: `You are Dr. Bags, a darkly humorous crypto loss therapist. Analyze trading failures with:
+          1. A sarcastic diagnosis name (e.g., "Terminal FOMO", "Acute Ape Syndrome")
+          2. Severity score (1-10)
+          3. Loss amount estimation
+          4. Time to liquidation
+          5. Brutal but funny insights
+          6. A trauma playlist suggestion
+          Output as JSON.`
+        },
+        {
+          role: 'user',
+          content: tradeDescription
+        }
+      ],
+      temperature: 0.9,
+    });
+
+
+    const report = JSON.parse(diagnosis.data.choices[0].message.content);
+
+
+    // Store in Supabase
+    const { data, error } = await supabase
+      .from('rekt_reports')
+      .insert({
+        wallet_address: walletAddress,
+        trade_description: tradeDescription,
+        diagnosis: report.diagnosis,
+        severity: report.severity,
+        loss_amount: report.lossAmount,
+        time_to_rekt: report.timeToRekt,
+        playlist: report.playlist,
+        created_at: new Date().toISOString()
+      });
+
+
+    // Update user's degen score
+    await supabase
+      .from('users')
+      .upsert({
+        wallet_address: walletAddress,
+        degen_score: report.severity,
+        last_rekt: new Date().toISOString()
+      });
+
+
+    res.status(200).json({ report, id: data?.[0]?.id });
+  } catch (error) {
+    console.error('Diagnosis error:', error);
+    res.status(500).json({ error: 'Failed to generate diagnosis' });
+  }
+}
+
+
+// api/therapy-chat.js
+export async function therapyChat(req, res) {
+  const { message, persona, walletAddress } = req.body;
+
+
+  const personas = {
+    stoic: {
+      prompt: "You are a stoic philosopher therapist. Quote Marcus Aurelius. Be zen about crypto losses. Remind them attachment causes suffering."
+    },
+    chad: {
+      prompt: "You are an alpha crypto bro therapist. Be aggressive but supportive. Use gym metaphors. Tell them to study harder and lift weights."
+    },
+    clown: {
+      prompt: "You are an absurdist clown therapist. Make dark jokes about their losses. Use circus metaphors. Be hilariously nihilistic."
+    }
+  };
+
+
+  const response = await openai.createChatCompletion({
+    model: 'gpt-3.5-turbo',
+    messages: [
+      { role: 'system', content: personas[persona].prompt },
+      { role: 'user', content: message }
+    ],
+    temperature: 0.8,
+    max_tokens: 150
+  });
+
+
+  // Store therapy session
+  await supabase
+    .from('therapy_sessions')
+    .insert({
+      wallet_address: walletAddress,
+      user_message: message,
+      bot_response: response.data.choices[0].message.content,
+      persona: persona
+    });
+
+
+  res.status(200).json({ 
+    response: response.data.choices[0].message.content 
+  });
+}
+
+
+// api/wallet-analysis.js
+import { ethers } from 'ethers';
+import axios from 'axios';
+
+
+export async function analyzeWallet(req, res) {
+  const { address } = req.body;
+  
+  try {
+    // Get transaction history from Etherscan/Alchemy
+    const txHistory = await axios.get(
+      `https://api.etherscan.io/api?module=account&action=tokentx&address=${address}&apikey=${process.env.ETHERSCAN_KEY}`
+    );
+
+
+    // Analyze for patterns
+    const losses = txHistory.data.result
+      .filter(tx => {
+        // Identify likely losses: sells at lower value than buys
+        return tx.to.toLowerCase() === address.toLowerCase() && 
+               parseFloat(tx.value) < previousBuyValue;
+      })
+      .map(tx => ({
+        token: tx.tokenSymbol,
+        loss: calculateLoss(tx),
+        date: new Date(tx.timeStamp * 1000)
+      }));
+
+
+    // Generate pattern insights
+    const patterns = {
+      topBuyer: losses.filter(l => l.date.getHours() < 6).length > 5,
+      panicSeller: losses.filter(l => l.loss > 0.5).length > 3,
+      fomoApe: detectFomoPattern(txHistory.data.result),
+      rugVictim: detectRugPulls(losses)
+    };
+
+
+    res.status(200).json({ losses, patterns, totalLoss: losses.reduce((a,b) => a + b.loss, 0) });
+  } catch (error) {
+    res.status(500).json({ error: 'Wallet analysis failed' });
+  }
+}
+
+
+// api/generate-meme.js
+import { createCanvas, loadImage } from 'canvas';
+
+
+export async function generateMeme(req, res) {
+  const { diagnosis, severity, walletAddress } = req.body;
+
+
+  const canvas = createCanvas(1200, 630);
+  const ctx = canvas.getContext('2d');
+
+
+  // Black background
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(0, 0, 1200, 630);
+
+
+  // Red gradient overlay
+  const gradient = ctx.createLinearGradient(0, 0, 1200, 630);
+  gradient.addColorStop(0, 'rgba(239, 68, 68, 0.3)');
+  gradient.addColorStop(1, 'rgba(249, 115, 22, 0.3)');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, 1200, 630);
+
+
+  // Add skull emoji
+  ctx.font = '120px Arial';
+  ctx.fillText('💀', 520, 200);
+
+
+  // Diagnosis text
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 60px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText(diagnosis, 600, 320);
+
+
+  // Severity score
+  ctx.font = 'bold 40px Arial';
+  ctx.fillStyle = '#EF4444';
+  ctx.fillText(`Rekt Score: ${severity}/10`, 600, 400);
+
+
+  // Wallet snippet
+  ctx.font = '20px monospace';
+  ctx.fillStyle = '#9CA3AF';
+  ctx.fillText(`${walletAddress.slice(0,6)}...${walletAddress.slice(-4)}`, 600, 500);
+
+
+  // Rektify branding
+  ctx.font = 'bold 30px Arial';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillText('rektify.lol', 600, 570);
+
+
+  // Convert to buffer
+  const buffer = canvas.toBuffer('image/png');
+  
+  // Upload to Supabase storage
+  const fileName = `memes/${walletAddress}-${Date.now()}.png`;
+  const { data, error } = await supabase.storage
+    .from('rekt-memes')
+    .upload(fileName, buffer, {
+      contentType: 'image/png'
+    });
+
+
+  const publicUrl = supabase.storage
+    .from('rekt-memes')
+    .getPublicUrl(fileName).data.publicUrl;
+
+
+  res.status(200).json({ memeUrl: publicUrl });
+}
+
+
+// api/leaderboard.js
+export async function getLeaderboard(req, res) {
+  const { data: topDegens } = await supabase
+    .from('users')
+    .select('wallet_address, degen_score, total_losses')
+    .order('degen_score', { ascending: false })
+    .limit(20);
+
+
+  // Add ENS names if available
+  const enrichedDegens = await Promise.all(
+    topDegens.map(async (degen) => {
+      const ensName = await resolveENS(degen.wallet_address);
+      return {
+        ...degen,
+        display_name: ensName || `${degen.wallet_address.slice(0,6)}...${degen.wallet_address.slice(-4)}`
+      };
+    })
+  );
+
+
+  res.status(200).json({ leaderboard: enrichedDegens });
+}
+
+
+// Database Schema (Supabase)
+/*
+CREATE TABLE users (
+  wallet_address TEXT PRIMARY KEY,
+  degen_score DECIMAL(3,1),
+  total_losses DECIMAL(12,2),
+  premium_tier BOOLEAN DEFAULT FALSE,
+  therapy_sessions_count INT DEFAULT 0,
+  last_rekt TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+
+CREATE TABLE rekt_reports (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  wallet_address TEXT REFERENCES users(wallet_address),
+  trade_description TEXT,
+  diagnosis TEXT,
+  severity DECIMAL(3,1),
+  loss_amount DECIMAL(12,2),
+  time_to_rekt INT,
+  playlist JSONB,
+  meme_url TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+
+CREATE TABLE therapy_sessions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  wallet_address TEXT REFERENCES users(wallet_address),
+  user_message TEXT,
+  bot_response TEXT,
+  persona TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+
+CREATE TABLE pattern_alerts (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  wallet_address TEXT REFERENCES users(wallet_address),
+  pattern_type TEXT, -- 'fomo_detected', 'revenge_trade', 'tilt_mode'
+  alert_message TEXT,
+  triggered_at TIMESTAMP DEFAULT NOW()
+);
+*/

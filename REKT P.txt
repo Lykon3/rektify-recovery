@@ -1,0 +1,392 @@
+﻿import React, { useState, useEffect } from 'react';
+import { AlertCircle, TrendingDown, Brain, Trophy, Zap, Heart, Skull } from 'lucide-react';
+
+
+const Rektify = () => {
+  const [activeTab, setActiveTab] = useState('report');
+  const [tradeInput, setTradeInput] = useState('');
+  const [rektReport, setRektReport] = useState(null);
+  const [therapyMode, setTherapyMode] = useState('stoic');
+  const [therapyMessages, setTherapyMessages] = useState([]);
+  const [degenScore, setDegenScore] = useState(0);
+  const [loading, setLoading] = useState(false);
+
+
+  // Therapy personas
+  const therapyPersonas = {
+    stoic: {
+      name: "Zen Stoic",
+      icon: "🧘",
+      style: "calm and philosophical"
+    },
+    chad: {
+      name: "Alpha Chad",
+      icon: "💪",
+      style: "aggressive motivational"
+    },
+    clown: {
+      name: "Clown Mode",
+      icon: "🤡",
+      style: "absurdist humor"
+    }
+  };
+
+
+  // Generate Rekt Report
+  const generateRektReport = () => {
+    setLoading(true);
+    setTimeout(() => {
+      const losses = [
+        { diagnosis: "Terminal FOMO", severity: 9.2 },
+        { diagnosis: "Acute Top-Buying Syndrome", severity: 8.7 },
+        { diagnosis: "Chronic Ape Disorder", severity: 9.8 },
+        { diagnosis: "Leverage Addiction", severity: 10 }
+      ];
+      
+      const report = {
+        diagnosis: losses[Math.floor(Math.random() * losses.length)],
+        lossAmount: Math.floor(Math.random() * 50000) + 1000,
+        timeToRekt: Math.floor(Math.random() * 120) + 1,
+        couldHaveBought: Math.floor(Math.random() * 5) + 0.1,
+        playlist: [
+          "Mad World - Gary Jules",
+          "Hurt - Johnny Cash",
+          "In The End - Linkin Park",
+          "Sound of Silence - Disturbed"
+        ],
+        memeText: "Another one bites the dust 💀"
+      };
+      
+      setRektReport(report);
+      setDegenScore(report.diagnosis.severity);
+      setLoading(false);
+    }, 1500);
+  };
+
+
+  // Therapy chat
+  const sendTherapyMessage = (userMessage) => {
+    const responses = {
+      stoic: [
+        "The market is but a teacher, and loss its lesson. What matters is not the coin, but the wisdom gained.",
+        "Marcus Aurelius once said: 'What we cannot control is external to us.' Your portfolio was always external.",
+        "Consider this: Every degen before you has felt this pain. You are part of an ancient tradition.",
+        "The wise trader knows that attachment to gains is the root of all suffering. Be like water, my friend."
+      ],
+      chad: [
+        "BRO. You got rekt but you're not BROKEN. Hit the gym, study the charts, COME BACK STRONGER.",
+        "Listen up king - losses are just tuition at Degen University. You're earning your PhD in PAIN.",
+        "ALPHA MINDSET: Every L is data. Stack sats, stack knowledge, stack MUSCLE. LFG!",
+        "You think Elon gave up after his first rug? NAH BRO. Diamond hands start in the MIND."
+      ],
+      clown: [
+        "🎪 HONK HONK! Welcome to the circus! You're the main attraction! 🤡",
+        "Sir, this is a Wendy's... and you just ordered a family-size serving of REKT with extra tears.",
+        "Breaking: Local man discovers revolutionary weight loss method - watching portfolio go to zero!",
+        "🎭 To ape or not to ape, that is the question. You chose ape. Shakespeare weeps."
+      ]
+    };
+
+
+    const botResponse = responses[therapyMode][Math.floor(Math.random() * responses[therapyMode].length)];
+    
+    setTherapyMessages([
+      ...therapyMessages,
+      { type: 'user', message: userMessage },
+      { type: 'bot', message: botResponse, persona: therapyMode }
+    ]);
+  };
+
+
+  // Leaderboard data
+  const leaderboardData = [
+    { rank: 1, name: "DegenKing.eth", score: 9.9, losses: "$847,293" },
+    { rank: 2, name: "ApeMaxi420", score: 9.7, losses: "$420,069" },
+    { rank: 3, name: "rugme_daddy", score: 9.5, losses: "$369,258" },
+    { rank: 4, name: "HODLtilZero", score: 9.3, losses: "$285,741" },
+    { rank: 5, name: "You", score: degenScore || 0, losses: `$${rektReport?.lossAmount || 0}` }
+  ];
+
+
+  return (
+    <div className="min-h-screen bg-black text-white p-4">
+      {/* Header */}
+      <div className="max-w-6xl mx-auto mb-8">
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <Skull className="w-10 h-10 text-red-500" />
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-red-500 to-orange-500 bg-clip-text text-transparent">
+              Rektify
+            </h1>
+          </div>
+          <div className="text-sm text-gray-400">
+            Your Digital Loss Therapist™
+          </div>
+        </div>
+
+
+        {/* Navigation */}
+        <div className="flex gap-4 mb-8 border-b border-gray-800">
+          {['report', 'therapy', 'leaderboard'].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`pb-4 px-6 capitalize transition-all ${
+                activeTab === tab
+                  ? 'text-red-500 border-b-2 border-red-500'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              {tab === 'report' && '🩻 Rekt Report'}
+              {tab === 'therapy' && '🧠 Therapy Mode'}
+              {tab === 'leaderboard' && '📊 Degen Leaderboard'}
+            </button>
+          ))}
+        </div>
+
+
+        {/* Rekt Report Tab */}
+        {activeTab === 'report' && (
+          <div className="space-y-6">
+            <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+              <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                <TrendingDown className="w-6 h-6 text-red-500" />
+                Generate Your Rekt Report
+              </h2>
+              
+              <textarea
+                value={tradeInput}
+                onChange={(e) => setTradeInput(e.target.value)}
+                placeholder="Describe your trade... e.g., 'I 20x longed PEPE with $4,300... liquidated in 18 mins'"
+                className="w-full p-4 bg-black border border-gray-700 rounded-lg text-white placeholder-gray-500 h-32"
+              />
+              
+              <button
+                onClick={generateRektReport}
+                disabled={loading}
+                className="mt-4 bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg font-bold transition-all flex items-center gap-2 disabled:opacity-50"
+              >
+                {loading ? (
+                  <>Analyzing Your Failure...</>
+                ) : (
+                  <>
+                    <Zap className="w-5 h-5" />
+                    Generate Rekt Report
+                  </>
+                )}
+              </button>
+            </div>
+
+
+            {rektReport && (
+              <div className="space-y-6 animate-fadeIn">
+                {/* Diagnosis Card */}
+                <div className="bg-gradient-to-br from-red-900/20 to-orange-900/20 rounded-xl p-6 border border-red-800">
+                  <h3 className="text-xl font-bold mb-4 text-red-400">📋 Official Diagnosis</h3>
+                  <div className="space-y-2">
+                    <p className="text-3xl font-bold">{rektReport.diagnosis.diagnosis}</p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-400">Severity Score:</span>
+                      <span className="text-2xl font-bold text-red-500">{rektReport.diagnosis.severity}/10</span>
+                    </div>
+                  </div>
+                </div>
+
+
+                {/* Stats Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                    <p className="text-gray-400 text-sm">Loss Amount</p>
+                    <p className="text-2xl font-bold text-red-500">${rektReport.lossAmount.toLocaleString()}</p>
+                  </div>
+                  <div className="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                    <p className="text-gray-400 text-sm">Time to Rekt</p>
+                    <p className="text-2xl font-bold text-orange-500">{rektReport.timeToRekt} mins</p>
+                  </div>
+                  <div className="bg-gray-900 rounded-lg p-4 border border-gray-800">
+                    <p className="text-gray-400 text-sm">Could've bought BTC</p>
+                    <p className="text-2xl font-bold text-green-500">{rektReport.couldHaveBought.toFixed(2)} BTC</p>
+                  </div>
+                </div>
+
+
+                {/* Trauma Playlist */}
+                <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+                  <h3 className="text-xl font-bold mb-4">🎵 Your Trauma Playlist</h3>
+                  <div className="space-y-2">
+                    {rektReport.playlist.map((song, i) => (
+                      <div key={i} className="flex items-center gap-3 p-2 hover:bg-gray-800 rounded transition-all">
+                        <span className="text-gray-500">{i + 1}.</span>
+                        <span>{song}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+
+                {/* Shareable Meme */}
+                <div className="bg-gradient-to-br from-purple-900/20 to-pink-900/20 rounded-xl p-8 border border-purple-800 text-center">
+                  <h3 className="text-3xl font-bold mb-2">{rektReport.memeText}</h3>
+                  <p className="text-gray-400">Rekt Score: {rektReport.diagnosis.severity}/10</p>
+                  <button className="mt-4 bg-purple-600 hover:bg-purple-700 px-6 py-2 rounded-lg transition-all">
+                    Share on Twitter
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+
+        {/* Therapy Mode Tab */}
+        {activeTab === 'therapy' && (
+          <div className="space-y-6">
+            {/* Persona Selector */}
+            <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+              <h2 className="text-2xl font-bold mb-4">Choose Your Therapist</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {Object.entries(therapyPersonas).map(([key, persona]) => (
+                  <button
+                    key={key}
+                    onClick={() => setTherapyMode(key)}
+                    className={`p-4 rounded-lg border-2 transition-all ${
+                      therapyMode === key
+                        ? 'border-red-500 bg-red-900/20'
+                        : 'border-gray-700 hover:border-gray-600'
+                    }`}
+                  >
+                    <div className="text-4xl mb-2">{persona.icon}</div>
+                    <div className="font-bold">{persona.name}</div>
+                    <div className="text-sm text-gray-400">{persona.style}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+
+            {/* Chat Interface */}
+            <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+              <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
+                <Brain className="w-6 h-6" />
+                Dr. Bags is listening...
+              </h3>
+              
+              <div className="bg-black rounded-lg p-4 h-64 overflow-y-auto mb-4 space-y-4">
+                {therapyMessages.length === 0 ? (
+                  <p className="text-gray-500 text-center">Start sharing your losses...</p>
+                ) : (
+                  therapyMessages.map((msg, i) => (
+                    <div key={i} className={`${msg.type === 'user' ? 'text-right' : 'text-left'}`}>
+                      <div className={`inline-block p-3 rounded-lg max-w-xs ${
+                        msg.type === 'user' 
+                          ? 'bg-blue-900 text-white' 
+                          : 'bg-gray-800 text-white'
+                      }`}>
+                        {msg.type === 'bot' && (
+                          <div className="text-sm text-gray-400 mb-1">
+                            {therapyPersonas[msg.persona].icon} {therapyPersonas[msg.persona].name}
+                          </div>
+                        )}
+                        {msg.message}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+              
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Tell me about your losses..."
+                  className="flex-1 p-3 bg-black border border-gray-700 rounded-lg text-white placeholder-gray-500"
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' && e.target.value) {
+                      sendTherapyMessage(e.target.value);
+                      e.target.value = '';
+                    }
+                  }}
+                />
+                <button className="bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg font-bold transition-all">
+                  Send
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+
+        {/* Leaderboard Tab */}
+        {activeTab === 'leaderboard' && (
+          <div className="space-y-6">
+            <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+              <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+                <Trophy className="w-6 h-6 text-yellow-500" />
+                Weekly Degen Leaderboard
+              </h2>
+              
+              <div className="space-y-2">
+                {leaderboardData.sort((a, b) => b.score - a.score).map((user, i) => (
+                  <div
+                    key={i}
+                    className={`flex items-center justify-between p-4 rounded-lg ${
+                      user.name === 'You' 
+                        ? 'bg-red-900/20 border border-red-800' 
+                        : 'bg-gray-800'
+                    }`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="text-2xl font-bold text-gray-500">
+                        #{i + 1}
+                      </div>
+                      <div>
+                        <div className="font-bold">{user.name}</div>
+                        <div className="text-sm text-gray-400">Degen Score: {user.score}/10</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xl font-bold text-red-500">{user.losses}</div>
+                      <div className="text-sm text-gray-400">Total Losses</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="mt-6 text-center">
+                <p className="text-gray-400 mb-2">Top scorers get airdropped therapy NFTs!</p>
+                <button className="bg-yellow-600 hover:bg-yellow-700 px-6 py-2 rounded-lg transition-all">
+                  Claim NFT
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+
+        {/* Premium CTA */}
+        <div className="mt-12 bg-gradient-to-r from-purple-900/20 to-pink-900/20 rounded-xl p-8 border border-purple-800 text-center">
+          <h3 className="text-2xl font-bold mb-2">🔥 Upgrade to Degen Premium</h3>
+          <p className="text-gray-400 mb-4">
+            Advanced loss analysis • Rug pull radar • Emotional stop-loss system
+          </p>
+          <button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 px-8 py-3 rounded-lg font-bold transition-all">
+            Get Premium - $9/month
+          </button>
+        </div>
+      </div>
+
+
+      <style jsx>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.5s ease-out;
+        }
+      `}</style>
+    </div>
+  );
+};
+
+
+export default Rektify;
