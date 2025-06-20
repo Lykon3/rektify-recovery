@@ -1,0 +1,541 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>Rekt Report Generator - Rektify</title>
+   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+   <script src="https://cdn.tailwindcss.com"></script>
+   <style>
+       /* Import Google Font */
+       @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+       
+       /* Base styles */
+       * {
+           margin: 0;
+           padding: 0;
+           box-sizing: border-box;
+       }
+       
+       body {
+           font-family: 'Space Grotesk', sans-serif;
+           background: #0a0a0a;
+           color: #ffffff;
+           min-height: 100vh;
+           /* Subtle background gradients for visual flair */
+           background-image: 
+               radial-gradient(circle at 20% 80%, rgba(255, 0, 110, 0.1) 0%, transparent 50%),
+               radial-gradient(circle at 80% 20%, rgba(131, 56, 236, 0.1) 0%, transparent 50%),
+               radial-gradient(circle at 40% 40%, rgba(6, 255, 165, 0.05) 0%, transparent 50%);
+       }
+       
+       /* Main container for content */
+       .container {
+           max-width: 900px;
+           margin: 0 auto;
+           padding: 20px;
+           /* Responsive padding */
+           @media (max-width: 768px) {
+               padding: 15px;
+           }
+       }
+       
+       /* Header section styles */
+       .header {
+           text-align: center;
+           margin-bottom: 40px;
+           padding: 40px 20px;
+           background: rgba(255, 255, 255, 0.02);
+           border-radius: 20px;
+           border: 1px solid rgba(255, 255, 255, 0.1);
+           /* Responsive padding */
+           @media (max-width: 768px) {
+               padding: 30px 15px;
+           }
+       }
+       
+       /* Logo styling with gradient text */
+       .logo {
+           font-size: 2.5rem;
+           font-weight: 700;
+           background: linear-gradient(45deg, #06ffa5, #8338ec);
+           -webkit-background-clip: text;
+           -webkit-text-fill-color: transparent;
+           background-clip: text;
+           margin-bottom: 10px;
+           /* Responsive font size */
+           @media (max-width: 768px) {
+               font-size: 2rem;
+           }
+       }
+       
+       /* Tagline text */
+       .tagline {
+           font-size: 1.2rem;
+           color: #888;
+           font-style: italic;
+           margin-bottom: 20px;
+           /* Responsive font size */
+           @media (max-width: 768px) {
+               font-size: 1rem;
+           }
+       }
+       
+       /* Back link button */
+       .back-link {
+           display: inline-block;
+           color: #06ffa5;
+           text-decoration: none;
+           padding: 8px 16px;
+           border: 1px solid #06ffa5;
+           border-radius: 20px;
+           transition: all 0.3s ease;
+           font-size: 0.9rem;
+       }
+       
+       .back-link:hover {
+           background: #06ffa5;
+           color: #000;
+       }
+       
+       /* Main content grid layout */
+       .main-content {
+           display: grid;
+           grid-template-columns: 1fr 1fr;
+           gap: 30px;
+           margin-bottom: 40px;
+           /* Responsive grid layout */
+           @media (max-width: 768px) {
+               grid-template-columns: 1fr; /* Single column on small screens */
+               gap: 20px;
+           }
+       }
+       
+       /* Input section styling */
+       .input-section {
+           background: rgba(255, 255, 255, 0.03);
+           border: 1px solid rgba(255, 255, 255, 0.1);
+           border-radius: 20px;
+           padding: 30px;
+           backdrop-filter: blur(10px);
+       }
+       
+       /* Section title with icon */
+       .section-title {
+           font-size: 1.5rem;
+           font-weight: 600;
+           margin-bottom: 20px;
+           color: #ffffff;
+           display: flex;
+           align-items: center;
+           gap: 10px;
+           /* Responsive font size */
+           @media (max-width: 768px) {
+               font-size: 1.3rem;
+           }
+       }
+       
+       /* Form group margin */
+       .form-group {
+           margin-bottom: 20px;
+       }
+       
+       /* Label styling */
+       label {
+           display: block;
+           margin-bottom: 8px;
+           color: #cccccc;
+           font-weight: 500;
+       }
+       
+       /* Input, textarea, select base styles */
+       input, textarea, select {
+           width: 100%;
+           padding: 12px 16px;
+           border: 1px solid rgba(255, 255, 255, 0.2);
+           border-radius: 10px;
+           background: rgba(0, 0, 0, 0.3);
+           color: #ffffff;
+           font-family: 'Space Grotesk', sans-serif;
+           font-size: 1rem;
+           transition: border-color 0.3s ease;
+       }
+       
+       input:focus, textarea:focus, select:focus {
+           outline: none;
+           border-color: #06ffa5; /* Highlight on focus */
+           box-shadow: 0 0 0 3px rgba(6, 255, 165, 0.2);
+       }
+
+       textarea {
+           resize: vertical; /* Allow vertical resizing */
+           min-height: 120px;
+       }
+
+       /* Placeholder text color */
+       input::placeholder, textarea::placeholder {
+           color: #888;
+       }
+
+       /* Custom select arrow */
+       select {
+           -webkit-appearance: none;
+           -moz-appearance: none;
+           appearance: none;
+           background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23cccccc'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' clip-rule='evenodd'%3E%3C/path%3E%3C/svg%3E");
+           background-repeat: no-repeat;
+           background-position: right 1rem center;
+           background-size: 1.2em;
+           padding-right: 2.5rem; /* Make space for the arrow */
+       }
+
+       /* Buttons */
+       .btn {
+           display: inline-flex;
+           align-items: center;
+           justify-content: center;
+           padding: 12px 25px;
+           border-radius: 12px;
+           font-size: 1.1rem;
+           font-weight: 600;
+           cursor: pointer;
+           transition: all 0.3s ease;
+           text-decoration: none;
+           gap: 8px;
+       }
+
+       .btn-primary {
+           background: linear-gradient(90deg, #06ffa5, #8338ec);
+           color: #0a0a0a;
+           border: none;
+           box-shadow: 0 5px 15px rgba(131, 56, 236, 0.3);
+       }
+
+       .btn-primary:hover {
+           opacity: 0.9;
+           transform: translateY(-2px);
+           box-shadow: 0 8px 20px rgba(131, 56, 236, 0.4);
+       }
+
+       .btn-secondary {
+           background: rgba(255, 255, 255, 0.1);
+           color: #ffffff;
+           border: 1px solid rgba(255, 255, 255, 0.3);
+       }
+
+       .btn-secondary:hover {
+           background: rgba(255, 255, 255, 0.2);
+           border-color: #06ffa5;
+       }
+
+       /* Result section styling */
+       .result-section {
+           background: rgba(255, 255, 255, 0.03);
+           border: 1px solid rgba(255, 255, 255, 0.1);
+           border-radius: 20px;
+           padding: 30px;
+           backdrop-filter: blur(10px);
+           display: flex;
+           flex-direction: column;
+           min-height: 300px; /* Ensure it has some height even if empty */
+       }
+
+       .result-content {
+           background: rgba(0, 0, 0, 0.3);
+           border: 1px solid rgba(255, 255, 255, 0.15);
+           border-radius: 10px;
+           padding: 20px;
+           flex-grow: 1;
+           overflow-y: auto; /* Scroll if content is too long */
+           white-space: pre-wrap; /* Preserve whitespace and wrap text */
+           font-family: monospace; /* Monospace for code/data output */
+           font-size: 0.9rem;
+           color: #eee;
+           line-height: 1.6;
+       }
+
+       .result-content:empty::before {
+           content: "Your generated report will appear here...";
+           color: #888;
+           font-style: italic;
+       }
+
+       /* Loading indicator styles */
+       .loading-indicator {
+           display: flex;
+           align-items: center;
+           justify-content: center;
+           gap: 10px;
+           color: #06ffa5;
+           font-weight: 500;
+           margin-top: 20px;
+           animation: pulse 1.5s infinite ease-in-out;
+       }
+
+       .loading-indicator.hidden {
+           display: none;
+       }
+
+       @keyframes pulse {
+           0% { opacity: 0.7; }
+           50% { opacity: 1; }
+           100% { opacity: 0.7; }
+       }
+
+       /* Footer styling */
+       .footer {
+           text-align: center;
+           padding: 30px 20px;
+           color: #888;
+           font-size: 0.9rem;
+           border-top: 1px solid rgba(255, 255, 255, 0.05);
+           margin-top: 40px;
+       }
+
+       .footer a {
+           color: #06ffa5;
+           text-decoration: none;
+       }
+
+       .footer a:hover {
+           text-decoration: underline;
+       }
+
+       /* Utility classes for responsive spacing and flexbox (Tailwind-like) */
+       .mt-4 { margin-top: 1rem; }
+       .mb-4 { margin-bottom: 1rem; }
+       .flex { display: flex; }
+       .justify-center { justify-content: center; }
+       .items-center { align-items: center; }
+       .space-x-4 > * + * { margin-left: 1rem; }
+   </style>
+</head>
+<body>
+   <div class="container">
+       <header class="header">
+           <h1 class="logo">Rektify</h1>
+           <p class="tagline">Generate detailed "rekt" reports for crypto incidents.</p>
+           <a href="#" class="back-link"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+       </header>
+
+       <main class="main-content">
+           <section class="input-section">
+               <h2 class="section-title">
+                   <i class="fas fa-clipboard-list"></i> Input Incident Details
+               </h2>
+               <form id="report-form">
+                   <div class="form-group">
+                       <label for="incident-name">Incident Name / Project:</label>
+                       <input type="text" id="incident-name" placeholder="e.g., FTX Collapse, Terra-Luna Crash" required>
+                   </div>
+
+                   <div class="form-group">
+                       <label for="incident-date">Date of Incident:</label>
+                       <input type="date" id="incident-date" required>
+                   </div>
+
+                   <div class="form-group">
+                       <label for="incident-type">Type of Incident:</label>
+                       <select id="incident-type" required>
+                           <option value="">Select type...</option>
+                           <option value="exploit">Smart Contract Exploit</option>
+                           <option value="rug-pull">Rug Pull</option>
+                           <option value="scam">Scam / Fraud</option>
+                           <option value="liquidation">Liquidation Event</option>
+                           <option value="market-crash">Market Crash</option>
+                           <option value="other">Other</option>
+                       </select>
+                   </div>
+
+                   <div class="form-group">
+                       <label for="description">Brief Description of What Happened:</label>
+                       <textarea id="description" placeholder="Summarize the incident, key players, and immediate impact." required></textarea>
+                   </div>
+
+                   <div class="form-group">
+                       <label for="involved-assets">Involved Assets (e.g., BTC, ETH, SOL, FTT):</label>
+                       <input type="text" id="involved-assets" placeholder="Comma-separated list of assets">
+                   </div>
+
+                   <div class="form-group">
+                       <label for="loss-estimate">Estimated Loss (USD):</label>
+                       <input type="number" id="loss-estimate" placeholder="e.g., 5000000000">
+                   </div>
+
+                   <div class="form-group">
+                       <label for="sources">Key Sources / URLs for Information:</label>
+                       <textarea id="sources" placeholder="Provide links to articles, reports, or social media threads (one per line)."></textarea>
+                   </div>
+
+                   <div class="flex justify-center space-x-4 mt-4">
+                       <button type="submit" class="btn btn-primary">
+                           <i class="fas fa-magic"></i> Generate Report
+                       </button>
+                       <button type="reset" class="btn btn-secondary">
+                           <i class="fas fa-redo"></i> Reset Form
+                       </button>
+                   </div>
+               </form>
+           </section>
+
+           <section class="result-section">
+               <h2 class="section-title">
+                   <i class="fas fa-file-alt"></i> Generated Report
+               </h2>
+               <div id="report-output" class="result-content">
+                   <!-- Report content will be displayed here -->
+               </div>
+               <div id="loading-indicator" class="loading-indicator hidden mt-4">
+                   <i class="fas fa-spinner fa-spin"></i> Generating report...
+               </div>
+               <div class="flex justify-center mt-4">
+                   <button id="copy-report-btn" class="btn btn-secondary hidden">
+                       <i class="fas fa-copy"></i> Copy Report
+                   </button>
+               </div>
+           </section>
+       </main>
+
+       <footer class="footer">
+           <p>© 2024 Rektify. All rights reserved. | <a href="#">Privacy Policy</a></p>
+       </footer>
+   </div>
+
+   <script>
+       document.addEventListener('DOMContentLoaded', () => {
+           const reportForm = document.getElementById('report-form');
+           const reportOutput = document.getElementById('report-output');
+           const loadingIndicator = document.getElementById('loading-indicator');
+           const copyReportBtn = document.getElementById('copy-report-btn');
+
+           reportForm.addEventListener('submit', async (e) => {
+               e.preventDefault();
+               reportOutput.innerHTML = ''; // Clear previous report
+               loadingIndicator.classList.remove('hidden'); // Show loading indicator
+               copyReportBtn.classList.add('hidden'); // Hide copy button
+
+               // Collect form data
+               const incidentName = document.getElementById('incident-name').value;
+               const incidentDate = document.getElementById('incident-date').value;
+               const incidentType = document.getElementById('incident-type').value;
+               const description = document.getElementById('description').value;
+               const involvedAssets = document.getElementById('involved-assets').value;
+               const lossEstimate = document.getElementById('loss-estimate').value;
+               const sources = document.getElementById('sources').value;
+
+               // Construct a detailed prompt for the LLM
+               const prompt = `Generate a detailed "Rekt Report" based on the following incident details. Focus on clarity, conciseness, and key takeaways for a crypto audience. The report should include:
+               1.  **Incident Overview**: Name, date, type, and a brief summary.
+               2.  **What Happened**: A more detailed narrative of the events leading up to and during the incident.
+               3.  **Impact**: Estimated financial loss, affected assets, and broader market/community implications.
+               4.  **Root Cause Analysis**: Probable causes (e.g., smart contract vulnerability, centralized exchange failure, market manipulation).
+               5.  **Lessons Learned**: Key takeaways for users, investors, and developers to prevent similar incidents.
+               6.  **Sources**: A list of provided URLs for further reading.
+
+               Incident Name/Project: ${incidentName}
+               Date of Incident: ${incidentDate}
+               Type of Incident: ${incidentType}
+               Brief Description: ${description}
+               Involved Assets: ${involvedAssets || 'Not specified'}
+               Estimated Loss (USD): ${lossEstimate ? `$${parseInt(lossEstimate).toLocaleString()}` : 'Not specified'}
+               Sources: ${sources || 'No sources provided'}
+               `;
+
+               try {
+                   // API call to Gemini-2.0-flash for text generation
+                   let chatHistory = [];
+                   chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+                   const payload = { contents: chatHistory };
+                   const apiKey = ""; // Canvas will provide this key at runtime
+                   const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                   
+                   const response = await fetch(apiUrl, {
+                       method: 'POST',
+                       headers: { 'Content-Type': 'application/json' },
+                       body: JSON.stringify(payload)
+                   });
+                   
+                   const result = await response.json();
+
+                   if (result.candidates && result.candidates.length > 0 &&
+                       result.candidates[0].content && result.candidates[0].content.parts &&
+                       result.candidates[0].content.parts.length > 0) {
+                       const generatedText = result.candidates[0].content.parts[0].text;
+                       reportOutput.innerHTML = formatMarkdownToHtml(generatedText); // Format Markdown to HTML
+                       copyReportBtn.classList.remove('hidden'); // Show copy button
+                   } else {
+                       reportOutput.innerHTML = '<p style="color: red;">Error: Could not generate report. Please try again.</p>';
+                       console.error('API response error:', result);
+                   }
+               } catch (error) {
+                   reportOutput.innerHTML = '<p style="color: red;">An error occurred while generating the report. Please check your internet connection or try again later.</p>';
+                   console.error('Fetch error:', error);
+               } finally {
+                   loadingIndicator.classList.add('hidden'); // Hide loading indicator
+               }
+           });
+
+           // Function to format Markdown to basic HTML (for display)
+           // This is a simplified Markdown parser. For full Markdown, a library would be needed.
+           function formatMarkdownToHtml(markdownText) {
+               let html = markdownText;
+
+               // Headers (simplified, just for bolding)
+               html = html.replace(/^###\s*(.*)$/gm, '<h4><strong>$1</strong></h4>');
+               html = html.replace(/^##\s*(.*)$/gm, '<h3><strong>$1</strong></h3>');
+               html = html.replace(/^#\s*(.*)$/gm, '<h2><strong>$1</strong></h2>');
+
+               // Bold text
+               html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+               html = html.replace(/__(.*?)__/g, '<strong>$1</strong>');
+
+               // Italic text
+               html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+               html = html.replace(/_(.*?)_/g, '<em>$1</em>');
+
+               // Lists (unordered)
+               html = html.replace(/^\s*[-*]\s+(.*)$/gm, '<li>$1</li>');
+               if (html.includes('<li>')) {
+                   html = `<ul>${html}</ul>`;
+               }
+               html = html.replace(/<\/ul>\s*<ul>/g, ''); // Fix for multiple ul tags
+
+               // Newlines to paragraphs, handling existing block elements
+               html = html.split('\n\n').map(paragraph => {
+                   if (!paragraph.startsWith('<h') && !paragraph.startsWith('<ul') && !paragraph.startsWith('<li')) {
+                       return `<p>${paragraph.replace(/\n/g, '<br>')}</p>`;
+                   }
+                   return paragraph;
+               }).join('');
+
+               return html;
+           }
+
+           // Copy report to clipboard
+           copyReportBtn.addEventListener('click', () => {
+               const textToCopy = reportOutput.innerText;
+               const textarea = document.createElement('textarea');
+               textarea.value = textToCopy;
+               textarea.style.position = 'fixed'; // Prevent scrolling to bottom
+               document.body.appendChild(textarea);
+               textarea.select();
+               try {
+                   document.execCommand('copy');
+                   // Provide visual feedback (e.g., change button text temporarily)
+                   const originalText = copyReportBtn.innerHTML;
+                   copyReportBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                   setTimeout(() => {
+                       copyReportBtn.innerHTML = originalText;
+                   }, 2000);
+               } catch (err) {
+                   console.error('Failed to copy text: ', err);
+                   // Fallback for browsers that don't support execCommand or when it fails
+                   // (though execCommand is generally reliable for copy)
+                   alert('Could not copy text. Please manually copy from the report area.');
+               }
+               document.body.removeChild(textarea);
+           });
+       });
+   </script>
+</body>
+</html>
