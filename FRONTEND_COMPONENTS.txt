@@ -1,0 +1,531 @@
+﻿// 🔥 REKTIFY INTEGRATION LAYER
+// Drop this into your Next.js app to connect frontend to backend
+
+
+// === /lib/api-client.js ===
+// Centralized API client for all Rektify endpoints
+
+
+export class RektifyAPI {
+  constructor(baseURL = '/api') {
+    this.baseURL = baseURL;
+    this.walletAddress = null;
+  }
+
+
+  setWallet(address) {
+    this.walletAddress = address;
+  }
+
+
+  async generateDiagnosis(tradeDescription) {
+    const response = await fetch(`${this.baseURL}/generate-diagnosis`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tradeDescription,
+        walletAddress: this.walletAddress
+      })
+    });
+    return response.json();
+  }
+
+
+  async sendTherapyMessage(message, mode) {
+    const response = await fetch(`${this.baseURL}/therapy-chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message,
+        mode,
+        userId: this.walletAddress
+      })
+    });
+    return response.json();
+  }
+
+
+  async generateMeme(diagnosis, severity) {
+    const response = await fetch(`${this.baseURL}/generate-meme`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        diagnosis,
+        severity,
+        walletAddress: this.walletAddress
+      })
+    });
+    return response.json();
+  }
+
+
+  async analyzeWallet() {
+    const response = await fetch(`${this.baseURL}/wallet-analysis`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        walletAddress: this.walletAddress
+      })
+    });
+    return response.json();
+  }
+
+
+  async getLeaderboard() {
+    const response = await fetch(`${this.baseURL}/leaderboard`);
+    return response.json();
+  }
+
+
+  async getPublicFeed(limit = 50) {
+    const response = await fetch(`${this.baseURL}/public-feed?limit=${limit}`);
+    return response.json();
+  }
+
+
+  async checkPremiumStatus() {
+    const response = await fetch(`${this.baseURL}/check-premium`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        walletAddress: this.walletAddress
+      })
+    });
+    return response.json();
+  }
+}
+
+
+// === /components/WalletConnect.js ===
+// RainbowKit integration for smooth wallet auth
+
+
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { useAccount } from 'wagmi';
+import { useEffect } from 'react';
+
+
+export function WalletConnect({ onConnect }) {
+  const { address, isConnected } = useAccount();
+
+
+  useEffect(() => {
+    if (isConnected && address) {
+      onConnect(address);
+    }
+  }, [isConnected, address, onConnect]);
+
+
+  return (
+    <ConnectButton 
+      chainStatus="icon"
+      showBalance={false}
+      accountStatus={{
+        smallScreen: 'avatar',
+        largeScreen: 'full',
+      }}
+    />
+  );
+}
+
+
+// === /components/RektifyProvider.js ===
+// Context provider for API and wallet state
+
+
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { RektifyAPI } from '../lib/api-client';
+
+
+const RektifyContext = createContext();
+
+
+export function RektifyProvider({ children }) {
+  const [api] = useState(new RektifyAPI());
+  const [walletAddress, setWalletAddress] = useState(null);
+  const [isPremium, setIsPremium] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+
+  const connectWallet = async (address) => {
+    setWalletAddress(address);
+    api.setWallet(address);
+    
+    // Check premium status
+    const { isPremium } = await api.checkPremiumStatus();
+    setIsPremium(isPremium);
+  };
+
+
+  return (
+    <RektifyContext.Provider value={{
+      api,
+      walletAddress,
+      isPremium,
+      loading,
+      setLoading,
+      connectWallet
+    }}>
+      {children}
+    </RektifyContext.Provider>
+  );
+}
+
+
+export const useRektify = () => useContext(RektifyContext);
+
+
+// === /components/RektReport.js ===
+// Updated Rekt Report component with full integration
+
+
+import { useState } from 'react';
+import { useRektify } from './RektifyProvider';
+import { Zap, Download, Twitter, AlertCircle } from 'lucide-react';
+
+
+export function RektReport() {
+  const { api, walletAddress, isPremium, loading, setLoading } = useRektify();
+  const [tradeInput, setTradeInput] = useState('');
+  const [report, setReport] = useState(null);
+  const [walletAnalysis, setWalletAnalysis] = useState(null);
+
+
+  const generateReport = async () => {
+    if (!walletAddress) {
+      alert('Please connect your wallet first!');
+      return;
+    }
+
+
+    setLoading(true);
+    try {
+      // Generate diagnosis
+      const diagnosis = await api.generateDiagnosis(tradeInput);
+      setReport(diagnosis);
+
+
+      // If premium, also run wallet analysis
+      if (isPremium) {
+        const analysis = await api.analyzeWallet();
+        setWalletAnalysis(analysis);
+      }
+    } catch (error) {
+      console.error('Failed to generate report:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  const generateMeme = async () => {
+    setLoading(true);
+    try {
+      const { memeUrl } = await api.generateMeme(
+        report.diagnosis,
+        report.severity
+      );
+      window.open(memeUrl, '_blank');
+    } catch (error) {
+      console.error('Failed to generate meme:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  const shareOnTwitter = () => {
+    const text = `Just got diagnosed with ${report.diagnosis} (Severity: ${report.severity}/10) by @RektifyApp 💀\n\nMy degen score is off the charts! #GetRekt #DeFi`;
+    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+  };
+
+
+  return (
+    <div className="space-y-6">
+      {/* Input Section */}
+      <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
+        <h2 className="text-2xl font-bold mb-4">Generate Your Rekt Report</h2>
+        
+        <textarea
+          value={tradeInput}
+          onChange={(e) => setTradeInput(e.target.value)}
+          placeholder="Describe your devastating loss..."
+          className="w-full p-4 bg-black border border-gray-700 rounded-lg"
+          rows={4}
+        />
+        
+        <button
+          onClick={generateReport}
+          disabled={loading || !tradeInput}
+          className="mt-4 bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg"
+        >
+          {loading ? 'Analyzing...' : 'Generate Report'}
+        </button>
+      </div>
+
+
+      {/* Report Display */}
+      {report && (
+        <div className="space-y-6 animate-fadeIn">
+          {/* Diagnosis Card */}
+          <div className="bg-gradient-to-br from-red-900/20 to-orange-900/20 rounded-xl p-6">
+            <h3 className="text-3xl font-bold mb-2">{report.diagnosis}</h3>
+            <p className="text-xl text-red-500">Severity: {report.severity}/10</p>
+            
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={generateMeme}
+                className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Generate Meme
+              </button>
+              
+              <button
+                onClick={shareOnTwitter}
+                className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg flex items-center gap-2"
+              >
+                <Twitter className="w-4 h-4" />
+                Share Shame
+              </button>
+            </div>
+          </div>
+
+
+          {/* Premium Wallet Analysis */}
+          {isPremium && walletAnalysis && (
+            <div className="bg-gray-900 rounded-xl p-6 border border-yellow-800">
+              <h3 className="text-xl font-bold mb-4 text-yellow-500">
+                🔮 Premium Wallet Analysis
+              </h3>
+              
+              <div className="space-y-3">
+                <div>
+                  <p className="text-gray-400">Total Historical Losses</p>
+                  <p className="text-2xl font-bold text-red-500">
+                    ${walletAnalysis.totalLosses.toLocaleString()}
+                  </p>
+                </div>
+                
+                <div>
+                  <p className="text-gray-400">Most Common Mistake</p>
+                  <p className="text-lg">{walletAnalysis.topPattern}</p>
+                </div>
+                
+                <div>
+                  <p className="text-gray-400">Risk Score</p>
+                  <p className="text-lg">{walletAnalysis.riskScore}/10</p>
+                </div>
+              </div>
+              
+              {walletAnalysis.alerts && (
+                <div className="mt-4 p-3 bg-red-900/20 rounded-lg">
+                  <p className="flex items-center gap-2 text-red-400">
+                    <AlertCircle className="w-4 h-4" />
+                    {walletAnalysis.alerts[0]}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+
+          {/* Trauma Playlist */}
+          <div className="bg-gray-900 rounded-xl p-6">
+            <h3 className="text-xl font-bold mb-4">Your Trauma Playlist</h3>
+            {report.playlist.map((song, i) => (
+              <div key={i} className="p-2 hover:bg-gray-800 rounded">
+                {i + 1}. {song}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// === /pages/api/public-feed.js ===
+// Public wall of shame endpoint
+
+
+import { supabase } from '../../lib/supabase-client';
+
+
+export default async function handler(req, res) {
+  const { limit = 50 } = req.query;
+
+
+  try {
+    const { data, error } = await supabase
+      .from('rekt_reports')
+      .select(`
+        *,
+        users (
+          wallet_address,
+          ens_name
+        )
+      `)
+      .order('created_at', { ascending: false })
+      .limit(parseInt(limit));
+
+
+    if (error) throw error;
+
+
+    // Anonymize if needed
+    const publicReports = data.map(report => ({
+      id: report.id,
+      diagnosis: report.diagnosis,
+      severity_score: report.severity_score,
+      loss_amount: report.loss_amount,
+      created_at: report.created_at,
+      user: report.users?.ens_name || `${report.users?.wallet_address?.slice(0, 6)}...`,
+      reactions: report.reactions || 0
+    }));
+
+
+    res.status(200).json({ reports: publicReports });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+}
+
+
+// === /pages/feed.js ===
+// Public feed page component
+
+
+import { useState, useEffect } from 'react';
+import { useRektify } from '../components/RektifyProvider';
+import { TrendingDown, Heart, MessageCircle } from 'lucide-react';
+
+
+export default function PublicFeed() {
+  const { api } = useRektify();
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+
+  useEffect(() => {
+    loadFeed();
+  }, []);
+
+
+  const loadFeed = async () => {
+    try {
+      const { reports } = await api.getPublicFeed();
+      setReports(reports);
+    } catch (error) {
+      console.error('Failed to load feed:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  return (
+    <div className="min-h-screen bg-black text-white p-4">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-4xl font-bold mb-8 text-center">
+          📉 Wall of Shame
+        </h1>
+        
+        {loading ? (
+          <p className="text-center text-gray-400">Loading degens...</p>
+        ) : (
+          <div className="space-y-4">
+            {reports.map((report) => (
+              <div
+                key={report.id}
+                className="bg-gray-900 rounded-xl p-6 border border-gray-800 hover:border-gray-700 transition-all"
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <p className="text-sm text-gray-400">{report.user}</p>
+                    <h3 className="text-xl font-bold">{report.diagnosis}</h3>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-red-500">
+                      {report.severity_score}/10
+                    </p>
+                    <p className="text-sm text-gray-400">
+                      ${report.loss_amount.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex gap-4 text-gray-400 text-sm">
+                  <button className="flex items-center gap-1 hover:text-red-500">
+                    <Heart className="w-4 h-4" />
+                    {report.reactions}
+                  </button>
+                  <button className="flex items-center gap-1 hover:text-blue-500">
+                    <MessageCircle className="w-4 h-4" />
+                    Cope together
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+// === /lib/stripe-integration.js ===
+// Stripe checkout for premium upgrades
+
+
+export async function createCheckoutSession(walletAddress) {
+  const response = await fetch('/api/create-checkout', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      walletAddress,
+      priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID
+    })
+  });
+  
+  const { sessionId } = await response.json();
+  
+  // Redirect to Stripe Checkout
+  const stripe = await loadStripe(process.env.NEXT_PUBLIC_STRIPE_KEY);
+  await stripe.redirectToCheckout({ sessionId });
+}
+
+
+// === DEPLOYMENT CHECKLIST ===
+/*
+1. Install dependencies:
+   npm install @rainbow-me/rainbowkit wagmi ethers@^5 @supabase/supabase-js stripe @stripe/stripe-js
+
+
+2. Set up environment variables:
+   NEXT_PUBLIC_SUPABASE_URL=
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=
+   SUPABASE_SERVICE_KEY=
+   OPENAI_API_KEY=
+   NEXT_PUBLIC_STRIPE_KEY=
+   STRIPE_SECRET_KEY=
+   NEXT_PUBLIC_STRIPE_PRICE_ID=
+
+
+3. Configure RainbowKit in _app.js:
+   import '@rainbow-me/rainbowkit/styles.css';
+   import { getDefaultWallets, RainbowKitProvider } from '@rainbow-me/rainbowkit';
+   import { configureChains, createClient, WagmiConfig } from 'wagmi';
+   import { mainnet, polygon, optimism, arbitrum } from 'wagmi/chains';
+   import { publicProvider } from 'wagmi/providers/public';
+
+
+4. Run database migrations (from your backend schema)
+
+
+5. Deploy to Vercel:
+   vercel --prod
+*/

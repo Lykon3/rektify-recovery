@@ -1,0 +1,620 @@
+﻿// 🧠 REKTIFY RECOVERY SYSTEM - COMPLETE BACKEND
+// Drop these into your Next.js API routes
+
+
+// === Database Schema (Supabase) ===
+/*
+-- Run these migrations in Supabase SQL editor:
+
+
+CREATE TABLE recovery_history (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  wallet_address TEXT NOT NULL,
+  date DATE NOT NULL,
+  severity DECIMAL(3,1) NOT NULL,
+  loss_amount DECIMAL(10,2),
+  diagnosis TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+
+CREATE TABLE user_badges (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  wallet_address TEXT NOT NULL,
+  badge_name TEXT NOT NULL,
+  badge_tier TEXT DEFAULT 'bronze',
+  minted BOOLEAN DEFAULT FALSE,
+  mint_tx_hash TEXT,
+  earned_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(wallet_address, badge_name)
+);
+
+
+CREATE TABLE referrals (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  referrer_wallet TEXT NOT NULL,
+  referred_wallet TEXT NOT NULL,
+  referral_code TEXT NOT NULL,
+  premium_earned DECIMAL(10,2) DEFAULT 0,
+  conversion_date TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+
+CREATE TABLE user_milestones (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  wallet_address TEXT NOT NULL,
+  milestone_type TEXT NOT NULL,
+  current_value INTEGER DEFAULT 0,
+  target_value INTEGER NOT NULL,
+  completed BOOLEAN DEFAULT FALSE,
+  completed_at TIMESTAMP
+);
+
+
+-- Create indexes for performance
+CREATE INDEX idx_recovery_wallet_date ON recovery_history(wallet_address, date DESC);
+CREATE INDEX idx_badges_wallet ON user_badges(wallet_address);
+CREATE INDEX idx_referrals_code ON referrals(referral_code);
+*/
+
+
+// === /pages/api/recovery/get-dashboard.js ===
+// Fetch complete recovery dashboard data
+
+
+import { supabase } from '../../../lib/supabase-client';
+
+
+export default async function handler(req, res) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+
+  const { walletAddress } = req.query;
+
+
+  if (!walletAddress) {
+    return res.status(400).json({ error: 'Wallet address required' });
+  }
+
+
+  try {
+    // Fetch recovery history
+    const { data: history } = await supabase
+      .from('recovery_history')
+      .select('*')
+      .eq('wallet_address', walletAddress)
+      .order('date', { ascending: true })
+      .limit(30);
+
+
+    // Fetch badges
+    const { data: badges } = await supabase
+      .from('user_badges')
+      .select('*')
+      .eq('wallet_address', walletAddress);
+
+
+    // Fetch milestones
+    const { data: milestones } = await supabase
+      .from('user_milestones')
+      .select('*')
+      .eq('wallet_address', walletAddress);
+
+
+    // Fetch referrals
+    const { data: referrals } = await supabase
+      .from('referrals')
+      .select('*')
+      .eq('referrer_wallet', walletAddress);
+
+
+    // Calculate stats
+    const stats = calculateRecoveryStats(history);
+    const availableBadges = checkAvailableBadges(stats, badges);
+
+
+    res.status(200).json({
+      history,
+      badges,
+      milestones,
+      referrals,
+      stats,
+      availableBadges
+    });
+  } catch (error) {
+    console.error('Recovery dashboard error:', error);
+    res.status(500).json({ error: 'Failed to fetch recovery data' });
+  }
+}
+
+
+function calculateRecoveryStats(history) {
+  if (!history || history.length === 0) {
+    return {
+      averageSeverity: 0,
+      totalLosses: 0,
+      totalReports: 0,
+      improvementRate: 0,
+      currentStreak: 0,
+      bestStreak: 0
+    };
+  }
+
+
+  const totalLosses = history.reduce((sum, h) => sum + (h.loss_amount || 0), 0);
+  const avgSeverity = history.reduce((sum, h) => sum + h.severity, 0) / history.length;
+  
+  // Calculate improvement rate (last 7 vs first 7)
+  const recentAvg = history.slice(-7).reduce((sum, h) => sum + h.severity, 0) / 7;
+  const initialAvg = history.slice(0, 7).reduce((sum, h) => sum + h.severity, 0) / 7;
+  const improvementRate = initialAvg > 0 ? ((initialAvg - recentAvg) / initialAvg) * 100 : 0;
+
+
+  // Calculate streaks
+  let currentStreak = 0;
+  let bestStreak = 0;
+  let tempStreak = 0;
+
+
+  for (let i = history.length - 1; i >= 0; i--) {
+    if (history[i].severity < 5) {
+      tempStreak++;
+      if (i === history.length - 1) currentStreak = tempStreak;
+      bestStreak = Math.max(bestStreak, tempStreak);
+    } else {
+      tempStreak = 0;
+    }
+  }
+
+
+  return {
+    averageSeverity: parseFloat(avgSeverity.toFixed(1)),
+    totalLosses,
+    totalReports: history.length,
+    improvementRate: parseFloat(improvementRate.toFixed(1)),
+    currentStreak,
+    bestStreak
+  };
+}
+
+
+function checkAvailableBadges(stats, existingBadges) {
+  const earnedBadgeNames = existingBadges.map(b => b.badge_name);
+  const availableBadges = [];
+
+
+  const badgeConditions = [
+    {
+      name: 'First Steps',
+      description: 'Complete your first recovery report',
+      condition: stats.totalReports >= 1,
+      tier: 'bronze'
+    },
+    {
+      name: 'Diamond Hands',
+      description: '7 day low-severity streak',
+      condition: stats.bestStreak >= 7,
+      tier: 'silver'
+    },
+    {
+      name: 'Reformed Degen',
+      description: '50% severity improvement',
+      condition: stats.improvementRate >= 50,
+      tier: 'gold'
+    },
+    {
+      name: 'Zen Master',
+      description: 'Average severity below 3.0',
+      condition: stats.averageSeverity < 3.0 && stats.totalReports >= 10,
+      tier: 'platinum'
+    },
+    {
+      name: 'Loss Leader',
+      description: 'Total losses over $100k',
+      condition: stats.totalLosses > 100000,
+      tier: 'diamond'
+    }
+  ];
+
+
+  badgeConditions.forEach(badge => {
+    if (badge.condition && !earnedBadgeNames.includes(badge.name)) {
+      availableBadges.push(badge);
+    }
+  });
+
+
+  return availableBadges;
+}
+
+
+// === /pages/api/recovery/save-report.js ===
+// Save new recovery report and check for badge unlocks
+
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+
+  const { walletAddress, severity, lossAmount, diagnosis } = req.body;
+
+
+  try {
+    // Save recovery report
+    const { data: report } = await supabase
+      .from('recovery_history')
+      .insert({
+        wallet_address: walletAddress,
+        date: new Date().toISOString().split('T')[0],
+        severity,
+        loss_amount: lossAmount,
+        diagnosis
+      })
+      .select()
+      .single();
+
+
+    // Check and award badges
+    const { data: history } = await supabase
+      .from('recovery_history')
+      .select('*')
+      .eq('wallet_address', walletAddress);
+
+
+    const { data: existingBadges } = await supabase
+      .from('user_badges')
+      .select('*')
+      .eq('wallet_address', walletAddress);
+
+
+    const stats = calculateRecoveryStats(history);
+    const newBadges = await awardNewBadges(walletAddress, stats, existingBadges);
+
+
+    // Update milestones
+    await updateMilestones(walletAddress, stats);
+
+
+    res.status(200).json({
+      report,
+      newBadges,
+      stats
+    });
+  } catch (error) {
+    console.error('Save report error:', error);
+    res.status(500).json({ error: 'Failed to save report' });
+  }
+}
+
+
+async function awardNewBadges(walletAddress, stats, existingBadges) {
+  const availableBadges = checkAvailableBadges(stats, existingBadges);
+  const newBadges = [];
+
+
+  for (const badge of availableBadges) {
+    const { data } = await supabase
+      .from('user_badges')
+      .insert({
+        wallet_address: walletAddress,
+        badge_name: badge.name,
+        badge_tier: badge.tier
+      })
+      .select()
+      .single();
+
+
+    if (data) newBadges.push(data);
+  }
+
+
+  return newBadges;
+}
+
+
+async function updateMilestones(walletAddress, stats) {
+  const milestoneTypes = [
+    { type: 'reports', current: stats.totalReports, target: 50 },
+    { type: 'low_severity_streak', current: stats.currentStreak, target: 30 },
+    { type: 'total_improvement', current: Math.max(0, stats.improvementRate), target: 75 }
+  ];
+
+
+  for (const milestone of milestoneTypes) {
+    await supabase
+      .from('user_milestones')
+      .upsert({
+        wallet_address: walletAddress,
+        milestone_type: milestone.type,
+        current_value: milestone.current,
+        target_value: milestone.target,
+        completed: milestone.current >= milestone.target,
+        completed_at: milestone.current >= milestone.target ? new Date() : null
+      });
+  }
+}
+
+
+// === /pages/api/recovery/mint-badge.js ===
+// Mint badge as NFT
+
+
+import { ethers } from 'ethers';
+
+
+const BADGE_CONTRACT_ADDRESS = process.env.BADGE_CONTRACT_ADDRESS;
+const BADGE_CONTRACT_ABI = [
+  "function mintBadge(address to, string memory badgeName, string memory tier) public"
+];
+
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+
+  const { walletAddress, badgeName } = req.body;
+
+
+  try {
+    // Verify badge ownership
+    const { data: badge } = await supabase
+      .from('user_badges')
+      .select('*')
+      .eq('wallet_address', walletAddress)
+      .eq('badge_name', badgeName)
+      .single();
+
+
+    if (!badge || badge.minted) {
+      return res.status(400).json({ error: 'Badge not available for minting' });
+    }
+
+
+    // Mint NFT (simplified - in production use defender relay or similar)
+    const provider = new ethers.providers.JsonRpcProvider(process.env.RPC_URL);
+    const signer = new ethers.Wallet(process.env.MINTER_PRIVATE_KEY, provider);
+    const contract = new ethers.Contract(BADGE_CONTRACT_ADDRESS, BADGE_CONTRACT_ABI, signer);
+
+
+    const tx = await contract.mintBadge(walletAddress, badgeName, badge.badge_tier);
+    await tx.wait();
+
+
+    // Update badge as minted
+    await supabase
+      .from('user_badges')
+      .update({ 
+        minted: true, 
+        mint_tx_hash: tx.hash 
+      })
+      .eq('id', badge.id);
+
+
+    res.status(200).json({
+      success: true,
+      txHash: tx.hash,
+      openseaUrl: `https://opensea.io/assets/${BADGE_CONTRACT_ADDRESS}/${badge.id}`
+    });
+  } catch (error) {
+    console.error('Mint error:', error);
+    res.status(500).json({ error: 'Failed to mint badge' });
+  }
+}
+
+
+// === /pages/api/recovery/generate-healing-meme.js ===
+// Generate "I'm Healing" meme
+
+
+import { createCanvas, loadImage } from 'canvas';
+import { uploadToIPFS } from '../../../lib/ipfs';
+
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+
+  const { walletAddress, improvementRate, currentStreak, badges } = req.body;
+
+
+  try {
+    // Create canvas
+    const canvas = createCanvas(1200, 630);
+    const ctx = canvas.getContext('2d');
+
+
+    // Gradient background (green = healing)
+    const gradient = ctx.createLinearGradient(0, 0, 1200, 630);
+    gradient.addColorStop(0, '#065f46');
+    gradient.addColorStop(1, '#047857');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 1200, 630);
+
+
+    // Add healing graphics
+    ctx.fillStyle = '#10b981';
+    ctx.font = 'bold 80px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText("I'M HEALING! 💚", 600, 150);
+
+
+    // Stats
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '40px Arial';
+    ctx.fillText(`Severity Drop: ${improvementRate}%`, 600, 250);
+    ctx.fillText(`Current Streak: ${currentStreak} days`, 600, 320);
+
+
+    // Badges
+    ctx.font = '30px Arial';
+    ctx.fillText(`Badges Earned: ${badges.length}`, 600, 400);
+
+
+    // Bottom text
+    ctx.font = 'italic 25px Arial';
+    ctx.fillText('From degen to zen 🧘', 600, 500);
+    ctx.fillText('rektify.lol', 600, 550);
+
+
+    // Convert to buffer
+    const buffer = canvas.toBuffer('image/png');
+    
+    // Upload to IPFS or cloud storage
+    const imageUrl = await uploadToIPFS(buffer);
+
+
+    res.status(200).json({ 
+      imageUrl,
+      tweetText: `I'm healing! 💚\n\nSeverity dropped ${improvementRate}%\n${currentStreak} day streak\n${badges.length} recovery badges earned\n\nTrack your recovery journey at rektify.lol\n\n#GetRektified #CryptoRecovery`
+    });
+  } catch (error) {
+    console.error('Meme generation error:', error);
+    res.status(500).json({ error: 'Failed to generate meme' });
+  }
+}
+
+
+// === /pages/api/recovery/referral.js ===
+// Handle referral system
+
+
+export default async function handler(req, res) {
+  if (req.method === 'POST') {
+    // Create referral code
+    const { walletAddress } = req.body;
+    
+    const referralCode = `DEGEN${walletAddress.slice(2, 6).toUpperCase()}`;
+    
+    res.status(200).json({ referralCode });
+  } else if (req.method === 'GET') {
+    // Get referral stats
+    const { walletAddress } = req.query;
+    
+    const { data: referrals } = await supabase
+      .from('referrals')
+      .select('*')
+      .eq('referrer_wallet', walletAddress);
+    
+    const totalEarned = referrals.reduce((sum, r) => sum + r.premium_earned, 0);
+    const activeReferrals = referrals.filter(r => r.conversion_date).length;
+    
+    res.status(200).json({
+      referralCode: `DEGEN${walletAddress.slice(2, 6).toUpperCase()}`,
+      totalReferrals: referrals.length,
+      activeReferrals,
+      totalEarned
+    });
+  }
+}
+
+
+// === /lib/notifications.js ===
+// Recovery milestone notifications
+
+
+export async function checkAndSendNotifications(walletAddress, stats) {
+  const notifications = [];
+
+
+  // Streak achievements
+  if (stats.currentStreak === 3) {
+    notifications.push({
+      type: 'streak',
+      title: '🔥 3 Day Streak!',
+      message: "You're on fire! Keep those severity scores low!"
+    });
+  } else if (stats.currentStreak === 7) {
+    notifications.push({
+      type: 'streak',
+      title: '💎 DIAMOND HANDS UNLOCKED',
+      message: "7 days of zen! You've earned the Diamond Hands badge!"
+    });
+  }
+
+
+  // Improvement milestones
+  if (stats.improvementRate >= 25 && stats.improvementRate < 26) {
+    notifications.push({
+      type: 'improvement',
+      title: '📈 25% Improvement!',
+      message: "You're 1/4 of the way to full recovery!"
+    });
+  } else if (stats.improvementRate >= 50 && stats.improvementRate < 51) {
+    notifications.push({
+      type: 'improvement',
+      title: '🧠 REFORMED DEGEN',
+      message: "50% severity reduction! You're officially reformed!"
+    });
+  }
+
+
+  // Relapse detection
+  const recentReports = await getRecentReports(walletAddress, 3);
+  const avgRecent = recentReports.reduce((sum, r) => sum + r.severity, 0) / 3;
+  
+  if (avgRecent > 7 && stats.averageSeverity < 5) {
+    notifications.push({
+      type: 'relapse',
+      title: '⚠️ Degen Relapse Detected',
+      message: "Your recent trades show increased FOMO. Time for a therapy session?"
+    });
+  }
+
+
+  return notifications;
+}
+
+
+// === Smart Contract for Badge NFTs (deploy separately) ===
+/*
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+
+
+contract RektifyBadges is ERC721, Ownable {
+    uint256 private _tokenIds;
+    
+    mapping(uint256 => string) public badgeNames;
+    mapping(uint256 => string) public badgeTiers;
+    mapping(address => uint256[]) public userBadges;
+    
+    constructor() ERC721("Rektify Recovery Badges", "REKT") {}
+    
+    function mintBadge(
+        address to,
+        string memory badgeName,
+        string memory tier
+    ) public onlyOwner returns (uint256) {
+        _tokenIds++;
+        uint256 newTokenId = _tokenIds;
+        
+        _mint(to, newTokenId);
+        badgeNames[newTokenId] = badgeName;
+        badgeTiers[newTokenId] = tier;
+        userBadges[to].push(newTokenId);
+        
+        return newTokenId;
+    }
+    
+    function tokenURI(uint256 tokenId) public view override returns (string memory) {
+        return string(abi.encodePacked(
+            "https://api.rektify.lol/badges/",
+            toString(tokenId),
+            ".json"
+        ));
+    }
+}
+*/
